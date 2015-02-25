@@ -1,0 +1,65 @@
+GENOME="hg19"
+PICARD="\${PICARD_DIR}"	
+bin=10
+
+samToBam = {
+	transform('.bam'){
+            exec """
+                if [ ${input#.*} == "sam"]
+                    samtools view -bS $input.sam | samtools sort - $output.prefix
+                else
+                    forward input
+                fi
+            """
+	}	
+    }
+
+sort = {
+    filter("sort"){
+        exec """
+            if [ ${samtools view -H $input | grep -c "coordinate" -} -eq 0 ]; then
+                samtools sort $input $output
+            else
+                forward input
+            fi """
+        }
+    }
+
+index = {
+    exec """
+        if [ !-f $input.bai ]; then
+            samtools index $input
+        fi """
+    forward input
+    }
+
+merge ={
+    filter("merge"){
+        exec """ samtools merge -h $input1 $output.prefix $inputs """
+        }
+    }
+
+deDupe = {
+    transform('dedupe2'+'.bam', 'metrics'+'.txt'){
+        exec """java -Xmx2g -jar ${PICARD}/MarkDuplicates.jar
+            INPUT=$input
+            OUTPUT=$output1
+            METRICS_FILE=$output2
+            REMOVE_DUPLICATES=true
+            ASSUME_SORTED=true	"""
+        }
+    }
+
+oneXCoverage={
+    transform('bs10_1xGenCov.bigwig'){
+		exec """bamCoverage -b $input.bam -bs $bin -p $((threads / 2)) -o $output2  --normalizeTo1x 2451960000"""
+	    }
+    }
+    
+centeredCoverage={
+    transform('bs10_1xGenCov_centered.bigwig'){
+		exec """bamCoverage -b $input.bam -bs $bin -p $((threads / 2)) -o $output1  --centerReads --normalizeTo1x 2451960000"""
+	    }
+    }
+    
+Bpipe.run { "%.bam" * [ sort + index ] + merge + dedupe + index + [ oneXcoverage, centeredCoverage ] }

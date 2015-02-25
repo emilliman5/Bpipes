@@ -1,0 +1,81 @@
+GENOME="hg19"
+PICARD="\${PICARD_DIR}"	
+bin=10
+THREAD="\$((threads/2))"
+
+sickle={
+	transform('sickle.fastq', 'sickle.fastq', 'single.fastq'){
+		from('.fastq','.fastq'){
+			exec """ sickle pe -t sanger -f $input1 -r $input2 -o $output1 -p $output2 -s $output3 """
+			}	
+		}
+	}			
+
+cutAdapt = {
+	transform('cutAdapt'+'.fastq'){
+	
+		exec """ cutadapt -a CTGTCTCTTATA $input -o $output"""
+		}
+	}
+	
+bowtie2 = {
+	transform('bowtie2_N1_' + GENOME + '.sam'){
+		from(".fastq", ".fastq"){
+			exec """bowtie2 -x ${GENOME} -1 $input1 -2 $input2 -X 500 -N 1 -p $threads --no-unal --no-mixed --dovetail
+			--no-discordant -S $output --un-conc unmapped_reads.fastq.gz"""
+			}
+		}
+	}
+	
+samFilter={
+	filter("filter"){
+		exec """grep -v "chrM" $input | ~/scripts/unique_read_filter.py > $output """
+		}
+	}
+	
+deDupe = {
+	transform('dedupe'+'.bam', 'metrics'+'.txt'){
+		exec """java -Xmx2g -jar ${PICARD}/MarkDuplicates.jar
+		INPUT=$input
+		OUTPUT=$output1
+		METRICS_FILE=$output2
+		REMOVE_DUPLICATES=true
+		ASSUME_SORTED=true	"""
+		}
+	}
+	
+FASTQC = {
+		exec "~/bin/FastQC/fastqc -t $threads $input"
+	}
+
+samToBam = {
+	transform('.bam'){
+		exec """ samtools view -bS $input.sam | samtools sort - $output.prefix"""
+		}	
+	}
+
+index = {
+	exec "samtools index $input"
+	forward(input)
+}
+
+coverage = {
+	transform('bs10_1xGenCov_centered.bigwig','bs10_1xGenCov.bigwig'){
+		multi 	"""bamCoverage -b $input.bam -bs $bin -p $THREAD -o $output1  --centerReads --normalizeTo1x 2451960000""",
+			"""bamCoverage -b $input.bam -bs $bin -p $THREAD -o $output2  --normalizeTo1x 2451960000"""
+		}
+	}
+	
+intraMateDist = {
+		transform("FragLength"+'.txt'){
+			exec """ cut -f9 $input > $output"""
+		}
+	}
+	
+Histogram ={
+	transform('.png.'){
+		exec """ ~/scripts/fraglength.R $input.txt $output """
+		}
+	}	
+	
+Bpipe.run { "%.fastq" * [cutAdapt] + sickle + bowtie2 + samFilter + [FASTQC, intraMateDist + Histogram, samToBam + deDupe + index + coverage] }

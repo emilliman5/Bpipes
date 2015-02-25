@@ -1,0 +1,39 @@
+PICARD="\${PICARD_DIR}"	
+bin=10
+THREADS="\$(($threads/2))"
+
+mergeBam = {
+    filter("merge"){
+        exec """samtools merge -h $input1 $output $inputs """
+	}
+     }
+
+indexBam = {
+    exec """ samtools index $input """
+    forward(input)
+    }
+
+deDupe = {
+    transform('dedupe2'+'.bam', 'metrics'+'.txt'){
+        exec """java -Xmx2g -jar ${PICARD}/MarkDuplicates.jar
+            INPUT=$input
+            OUTPUT=$output1
+            METRICS_FILE=$output2
+            REMOVE_DUPLICATES=true
+            ASSUME_SORTED=true	"""
+        }
+    }
+
+oneXCoverage = {
+    transform('bs10_1xGenCov.bigwig'){
+		exec """bamCoverage -b $input.bam -bs $bin -p $THREADS -o $output  --normalizeTo1x 2451960000"""
+	    }
+    }
+    
+centeredCoverage = {
+    transform('bs10_1xGenCov_centered.bigwig'){
+		exec """bamCoverage -b $input.bam -bs $bin -p $THREADS -o $output  --centerReads --normalizeTo1x 2451960000"""
+	    }
+    }
+    
+Bpipe.run {mergeBam + deDupe + indexBam + [oneXCoverage, centeredCoverage]}

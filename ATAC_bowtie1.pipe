@@ -1,0 +1,92 @@
+GENOME="hg19"
+PICARD="\${PICARD_DIR}"
+cutoff1=100
+cutoff2=-100
+THREADS=6	
+bin=10
+
+sickle={
+	transform('sickle.fastq', 'sickle.fastq', 'single.fastq'){
+		from('.fastq','.fastq'){
+			exec """ sickle pe -t sanger -f $input1 -r $input2 -o $output1 -p $output2 -s $output3 """
+			}	
+		}
+	}			
+
+cutAdapt = {
+	transform('cutAdapt'+'.fastq'){
+	
+		exec """ cutadapt -a CTGTCTCTTATA $input -o $output"""
+		}
+	}
+	
+bowtie = {
+	transform('bowtie1_N1_' + GENOME + '.sam'){
+		from(".fastq", ".fastq"){
+			exec """bowtie ${GENOME} -1 $input1 -2 $input2 -S $output -X 2000 -v 2 -m 1 -p $THREADS --un unmapped_reads.fastq"""
+			}
+		}
+	}
+	
+deDupe = {
+	transform('dedupe'+'.bam', 'metrics'+'.txt'){
+		exec """java -Xmx2g -jar ${PICARD}/MarkDuplicates.jar
+		INPUT=$input
+		OUTPUT=$output1
+		METRICS_FILE=$output2
+		REMOVE_DUPLICATES=true
+		ASSUME_SORTED=true	"""
+		}
+	}
+	
+FASTQC = {
+		exec "~/bin/FastQC/fastqc -t $THREADS $input"
+	}
+
+samSplit={
+	filter('NFR', 'NUC', 'MISC'){
+		
+		exec """head -n 27 $input > $output1 """
+		exec """head -n 27 $input > $output2 """
+		exec """awk '{ if(\$9 <=$cutoff1 && \$9>=$cutoff2){ print \$0 >> "$output1"} else if((\$9 <=250 && \$9>=150) ||
+			(\$9 <=-150 && \$9>=-250)){ print \$0 >> "$output2"} else print \$0 >> "$output3" }' $input	"""
+		}
+	}
+
+samFilter={
+	filter("filter"){
+		exec """samtools view -S -F 4 -h $input | grep -v "chrM" > $output """	
+		}
+	}
+
+samToBam = {
+	transform('.bam'){
+		exec """ samtools view -bS $input.sam | samtools sort - $output.prefix"""
+		}	
+	}
+
+index = {
+	exec "samtools index $input"
+	forward input
+}
+
+coverage = {
+	transform('bs10_1xGenCov.bigwig','bs10_RPKM_Isite.bigwig'){
+		exec """bamCoverage -b $input.bam -bs $bin -p 2 -o $output1  --normalizeTo1x 2451960000"""
+		exec """bamCoverage -b $input.bam -bs $bin -p 2 -o $output2  -f 5 --normalizeUsingRPKM --doNotExtendPairedEnds"""
+		}
+	}
+	
+intraMateDist = {
+		transform("FragLength"+'.txt'){
+			exec """ cut -f9 $input > $output"""
+		}
+	}
+	
+Histogram ={
+	transform('.png.'){
+		exec """ ~/scripts/fraglength.R $input.txt $output """
+		}
+	}	
+	
+Bpipe.run { "%.fastq" * [cutAdapt] + sickle + bowtie + samFilter + [FASTQC, samSplit, intraMateDist + Histogram] + "%.sam" * [samToBam + deDupe + index + coverage] }
