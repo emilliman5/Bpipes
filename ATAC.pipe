@@ -2,7 +2,7 @@ GENOME="hg19"
 PICARD="\${PICARD_DIR}"
 cutoff1=100
 cutoff2=-100
-THREADS="\$(($threads/2))"	
+THREADS=2
 bin=10
 
 sickle={
