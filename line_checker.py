@@ -12,14 +12,15 @@ for line in f :
     if(line[0][0] == "@") :
         of.writerow(line)
         continue
-
-    if(last_read == None) : 
+	
+    if(last_read == None) : #initialize the first read of the pair
         last_read = line
         if(re.split('\t|:',line)[20] =="XS" & re.split('\t|:',line)[20] <= re.split('\t|:',line)[23]):
             XS=1
         
     else :
-        if(last_read[0] == line[0]):    
+        if(last_read[0] == line[0]):
+        	#if the first read is unambiguous i.e. no other valid alignments reported then keep the pair.    
             if(XS==1 & re.split('\t|:',line)[20] =="XS" & XS==0 & re.split('\t|:',line)[20] <= re.split('\t|:',line)[23]):
                 last_read = None
                 XS=0 
