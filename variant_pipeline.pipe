@@ -1,0 +1,88 @@
+
+bowtie2
+
+
+
+cutadapt
+
+
+
+markduplicates
+
+
+
+
+createRealignTargets
+
+				$JAVA_HOME/java -jar GenomeAnalysisTK.jar -T RealignerTargetCreator
+						-R ~/hg19_features/hg19.fasta
+						-I $input
+						-o $output
+
+						forward $input $output
+RealignTargets
+
+				$JAVA_HOME/java -jar GenomeAnalysisTK.jar -T IndelRealigner
+						-R ~/hg19_features/hg19.fasta
+						-I $input1
+						-targetIntervals $input2
+						-o $output
+
+
+
+
+sortSam
+
+
+
+
+
+mergeSamAlignment
+
+
+
+
+
+reCalibrateBases
+				$JAVA_HOME/java -jar GenomeAnalysisTK.jar -T BaseRecalibrator
+						-R ~/hg19_features/hg19.fasta
+						-I $input
+						-knownSites gold.standard.indels.vcf
+						-knownSites dbsnp137.vcf
+						-o $output
+
+				forward $input $output
+
+
+printReads
+				$JAVA_HOME/java -jar GenomeAnalysisTK.jar -T PrintReads
+						-R ~/hg19_features/hg19.fasta
+						-I $input1
+						-BQSR $input2
+						-o $output
+
+
+analyzeCovariates
+				$JAVA_HOME/java -jar GenomeAnalysisTK.jar -T AnalyzeCovariates
+						-R ~/hg19_features/hg19.fasta
+						-before $input1
+						-after $input2
+						-plots $output
+
+
+jointGenotype
+
+
+
+
+FilterVariants
+
+
+
+
+
+
+
+
+
+
