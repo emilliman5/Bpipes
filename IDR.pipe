@@ -1,0 +1,36 @@
+macs2Chip={
+	transform("_macs2Peaks"){
+		exec """ macs2 callpeak -t $input1 -c $input2 -n $output --keep-dup all -p 1e-3 -g hs"""
+	}
+}
+
+macs2ATAC={
+	transform("_macs2Peaks"){
+		exec """macs2 callpeak --nomodel -t $input -n $output --nolambda --keep-dup all -slocal 10000 -g hs"""
+	}
+}
+
+peakrank = {
+	transform("_pValueRank.narrowPeak"){
+
+		exec """ sort -k 8nr,8nr $input | head -n 100000 > $output"""
+	}
+
+}
+
+comparisons
+
+IDR
+
+pseudoReps
+
+finalPeakcalls
+
+samplePool={
+	transform("_rep0.bam"){
+		exec """ 
+			
+		"""
+	}
+
+}
