@@ -1,3 +1,10 @@
+##Script to perform variant calling analyses using MIT's GATK v3.6
+##Written by: Eric Milliman
+##Updated: 06/28/2016
+
+##Note: Indel realignment is capped at a depth of 200000. This should be fine for the miR302 analysis but a down-sampling
+##may need to be performed just in case.
+
 for fa in *1.sanger.fastq;
 
 do
