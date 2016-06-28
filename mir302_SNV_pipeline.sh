@@ -100,17 +100,19 @@ do
 		  ###############################################################################################"
 	if [ ! -f "*_forIndelRealigner.intervals" ] || [ ! -f "*dedupe.bam"]; then
 		~/bin/jdk1.8.0_91/bin/java -jar ~/bin/GATK3.6/bin/GenomeAnalysisTK.jar -T RealignerTargetCreator \
-			-R ~/hg19_reference_sequence/hg19_chromfa.fa
-			-I ${f}_bowtie2_N1_hg19_merged_sort_dedupe.bam
-			-o ${f}_forIndelRealigner.intervals
-			-nt 4
+			-R ~/hg19_reference_sequence/hg19_chromfa.fa \
+			-I ${f}_bowtie2_N1_hg19_merged_sort_dedupe.bam \
+			-o ${f}_forIndelRealigner.intervals \
+			-nt 8 \
+			-maxReadsForRealignment 200000 \
+			-maxReadsInMemory 200000
 	fi	
 
 	echo "#########################################################
 	      ################Perform local realignment################
 	      #########################################################"
 	if [ ! -f "*realigned.bam" ] || [ ! -f "*_forIndelRealigner.intervals" ]; then
-		~/bin/jdk1.8.0_91/bin/java -jar ~/bin/GATK3.6/bin/GenomeAnalysisTK.jar -T IndelRealigner \
+		~/bin/jdk1.8.0_91/bin/java -Xmx16g -jar ~/bin/GATK3.6/bin/GenomeAnalysisTK.jar -T IndelRealigner \
 			-R ~/hg19_reference_sequence/hg19_chromfa.fa
 			-I ${f}_bowtie2_N1_hg19_merged_sort_dedupe.bam
 			-targetIntervals ${f}_forIndelRealigner.intervals
@@ -186,7 +188,7 @@ do
 		-L ../miR302.intervals
 		-ERC GVCF
 	fi
-	
+
 	cd ..
 done;
 
