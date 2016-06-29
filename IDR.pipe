@@ -29,7 +29,14 @@ finalPeakcalls
 samplePool={
 	transform("_rep0.bam"){
 		exec """ 
-			
+			echo "java -Xmx16g -XX:ParallelGCThreads=4 -jar ${PICARD_DIR}/MergeSamFiles.jar \\
+			O=$output \\" > merge.sh
+		for f in $inputs; do
+			echo "I=$f \\" >> merge.sh
+		done;
+		chmod 777 merge.sh
+		sh ./merge.sh
+		rm merge.sh
 		"""
 	}
 
