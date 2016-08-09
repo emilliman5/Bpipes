@@ -1,2 +1,2 @@
 # Bpipes
-Bpipe and associated analysis scripts
+Bioinformatics pipelines written for use in Bpipe
